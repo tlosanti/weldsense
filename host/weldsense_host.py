@@ -271,6 +271,7 @@ class WeldSenseApp:
             "port": "",
             "recording": False,
             "session_name": "",
+            "last_saved": "",
             "calibrated": False,
             "pitch": 0.0, "roll": 0.0, "yaw": 0.0, "yaw_rate": 0.0,
             "ax": 0.0, "ay": 0.0, "az": 0.0,
@@ -467,6 +468,7 @@ class WeldSenseApp:
                 return False, "not recording"
             rec = self._recorder
             self._recorder = None
+        saved_path = os.path.join(RECORDINGS_DIR, self.session_name)
         rec.close(extra_meta={
             "stop_time": datetime.now().isoformat(),
             # Refresh with the FINAL calibrated bias — calibration may have
@@ -479,8 +481,11 @@ class WeldSenseApp:
                 "cal_samples": GYRO_CAL_SAMPLES,
             },
         })
-        self._set(recording=False, status_msg=f"saved {self.session_name}")
-        return True, self.session_name
+        self._set(recording=False, last_saved=saved_path,
+                  status_msg=f"saved -> {saved_path}")
+        print(f"[recording] saved -> {saved_path}  "
+              f"({rec.imu_rows} IMU rows, {rec.audio_samples} audio samples)")
+        return True, saved_path
 
     def recalibrate(self):
         self.fusion.reset_calibration()
