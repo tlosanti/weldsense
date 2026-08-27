@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Recorded sessions (data, not code) — keep the folder, not its contents
+recordings/*
+!recordings/.gitkeep
+
+# macOS
+.DS_Store

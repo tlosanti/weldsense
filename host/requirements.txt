@@ -1,0 +1,4 @@
+# WeldSense host dependencies (Python 3.8+)
+pyserial>=3.5
+numpy>=1.21
+scipy>=1.7      # optional today; reserved for host-side STFT / advanced analysis

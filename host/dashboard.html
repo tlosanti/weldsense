@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeldSense Dashboard</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --edge:#2a3240;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#f0883e; --ok:#3fb950;
+    --warn:#d29922; --bad:#f85149; --blue:#58a6ff;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:18px;
+  }
+  h1 { font-size:20px; margin:0 0 2px; letter-spacing:.5px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
+  .bar {
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    background:var(--panel); border:1px solid var(--edge); border-radius:10px;
+    padding:12px; margin-bottom:16px;
+  }
+  button {
+    font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+    background:var(--panel2); color:var(--txt); border:1px solid var(--edge);
+    border-radius:8px; padding:9px 14px;
+  }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#111; border-color:var(--accent); }
+  button.danger  { background:var(--bad); color:#fff; border-color:var(--bad); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  input {
+    font:inherit; background:var(--bg); color:var(--txt);
+    border:1px solid var(--edge); border-radius:8px; padding:8px 10px;
+  }
+  .spacer { flex:1; }
+  .pill {
+    font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px;
+    border:1px solid var(--edge);
+  }
+  .pill.on  { color:var(--ok);  border-color:var(--ok); }
+  .pill.off { color:var(--bad); border-color:var(--bad); }
+  .pill.rec { color:#fff; background:var(--bad); border-color:var(--bad); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+  .card {
+    background:var(--panel); border:1px solid var(--edge); border-radius:10px;
+    padding:14px 16px;
+  }
+  .card h2 {
+    font-size:12px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--muted); margin:0 0 10px;
+  }
+  .big { font-family:var(--mono); font-size:30px; font-weight:600; }
+  .row { display:flex; justify-content:space-between; padding:3px 0;
+         font-family:var(--mono); font-size:14px; }
+  .row .k { color:var(--muted); }
+  .drift { color:var(--warn); font-size:11px; margin-top:6px; }
+  .three { display:flex; gap:14px; }
+  .three .col { flex:1; text-align:center; }
+  .three .lbl { color:var(--muted); font-size:11px; text-transform:uppercase; }
+  .three .val { font-family:var(--mono); font-size:22px; }
+  .stat { color:var(--muted); }
+  .stat.bad { color:var(--bad); }
+  .stat.warn { color:var(--warn); }
+  #status { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%;
+         margin-right:5px; background:var(--muted); vertical-align:middle; }
+  .dot.on { background:var(--ok); } .dot.off { background:var(--bad); }
+</style>
+</head>
+<body>
+  <h1>Weld<span>Sense</span></h1>
+  <div class="sub">Raw acquisition on XIAO · all analysis on host · live host-state view</div>
+
+  <div class="bar">
+    <span class="pill off" id="connPill"><span class="dot off"></span>Disconnected</span>
+    <span class="pill" id="recPill">Idle</span>
+    <button class="primary" id="btnConnect">Connect XIAO</button>
+    <button id="btnDisconnect">Disconnect</button>
+    <input id="nameInput" placeholder="sample name" value="weld_sample_01" size="16">
+    <button class="primary" id="btnStart">Start Recording</button>
+    <button class="danger" id="btnStop">Stop Recording</button>
+    <button id="btnCal">Recalibrate Gyro</button>
+    <span class="spacer"></span>
+    <span id="status">idle</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Orientation (host-computed)</h2>
+      <div class="three">
+        <div class="col"><div class="lbl">Pitch</div><div class="val" id="pitch">–</div></div>
+        <div class="col"><div class="lbl">Roll</div><div class="val" id="roll">–</div></div>
+        <div class="col"><div class="lbl">Yaw*</div><div class="val" id="yaw">–</div></div>
+      </div>
+      <div class="row" style="margin-top:10px"><span class="k">yaw rate</span><span id="yawrate">–</span></div>
+      <div class="drift">* Yaw is gyro-integration only and <b>drifts</b> — no magnetometer for absolute heading.</div>
+      <div class="drift" id="calMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Accelerometer (g)</h2>
+      <div class="row"><span class="k">ax</span><span id="ax">–</span></div>
+      <div class="row"><span class="k">ay</span><span id="ay">–</span></div>
+      <div class="row"><span class="k">az</span><span id="az">–</span></div>
+      <h2 style="margin-top:14px">Gyroscope (dps)</h2>
+      <div class="row"><span class="k">gx</span><span id="gx">–</span></div>
+      <div class="row"><span class="k">gy</span><span id="gy">–</span></div>
+      <div class="row"><span class="k">gz</span><span id="gz">–</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Audio (host FFT)</h2>
+      <div class="lbl" style="color:var(--muted);font-size:11px">Dominant frequency</div>
+      <div class="big" id="dom">– <span style="font-size:14px;color:var(--muted)">Hz</span></div>
+      <div class="row" style="margin-top:8px"><span class="k">RMS</span><span id="rms">–</span></div>
+      <div class="row"><span class="k">spectral centroid</span><span id="centroid">–</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Link / Integrity</h2>
+      <div class="row"><span class="k">firmware</span><span id="fw">–</span></div>
+      <div class="row"><span class="k">IMU rate</span><span id="imuRate">–</span></div>
+      <div class="row"><span class="k">audio rate</span><span id="audioRate">–</span></div>
+      <div class="row"><span class="k">IMU packets</span><span id="imuPk">–</span></div>
+      <div class="row"><span class="k">audio packets</span><span id="audPk">–</span></div>
+      <div class="row"><span class="k">IMU dropped</span><span id="imuDrop" class="stat">–</span></div>
+      <div class="row"><span class="k">audio dropped</span><span id="audDrop" class="stat">–</span></div>
+      <div class="row"><span class="k">CRC errors</span><span id="crc" class="stat">–</span></div>
+      <div class="row"><span class="k">resyncs</span><span id="resync" class="stat">–</span></div>
+      <div class="row"><span class="k">device audio overflow</span><span id="ovf" class="stat">–</span></div>
+    </div>
+  </div>
+
+<script>
+const $ = id => document.getElementById(id);
+async function post(path, body) {
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body||{})});
+  return r.json();
+}
+$('btnConnect').onclick    = () => post('/api/connect', {});
+$('btnDisconnect').onclick = () => post('/api/disconnect', {});
+$('btnStart').onclick      = () => post('/api/start', {name: $('nameInput').value});
+$('btnStop').onclick       = () => post('/api/stop', {});
+$('btnCal').onclick        = () => post('/api/recalibrate', {});
+
+const f = (v,d=2) => (v===null||v===undefined) ? '–' : Number(v).toFixed(d);
+function statClass(el, v){ el.className = 'stat' + (v>0 ? ' bad' : ''); }
+
+async function tick() {
+  let s;
+  try { s = await (await fetch('/api/state')).json(); }
+  catch(e){ $('status').textContent = 'server unreachable'; return; }
+
+  const cp = $('connPill');
+  cp.className = 'pill ' + (s.connected ? 'on':'off');
+  cp.innerHTML = '<span class="dot '+(s.connected?'on':'off')+'"></span>' +
+                 (s.connected ? ('Connected '+s.port) : 'Disconnected');
+  const rp = $('recPill');
+  if (s.recording){ rp.className='pill rec'; rp.textContent='● REC '+s.session_name; }
+  else { rp.className='pill'; rp.textContent='Idle'; }
+
+  $('status').textContent = s.status_msg || '';
+
+  $('pitch').textContent = f(s.pitch,1)+'°';
+  $('roll').textContent  = f(s.roll,1)+'°';
+  $('yaw').textContent   = f(s.yaw,1)+'°';
+  $('yawrate').textContent = f(s.yaw_rate,1)+' dps';
+  $('calMsg').textContent = s.calibrated ? '' :
+     (s.connected ? 'Calibrating gyro bias — hold the torch still…' : '');
+
+  $('ax').textContent = f(s.ax,3); $('ay').textContent = f(s.ay,3); $('az').textContent = f(s.az,3);
+  $('gx').textContent = f(s.gx,2); $('gy').textContent = f(s.gy,2); $('gz').textContent = f(s.gz,2);
+
+  $('dom').innerHTML = f(s.dominant_hz,0)+' <span style="font-size:14px;color:var(--muted)">Hz</span>';
+  $('rms').textContent = f(s.rms,4);
+  $('centroid').textContent = f(s.centroid_hz,0)+' Hz';
+
+  $('fw').textContent = s.fw_version || '–';
+  $('imuRate').textContent = f(s.imu_rate_est,0)+' Hz';
+  $('audioRate').textContent = f(s.audio_rate_est,0)+' Hz';
+  $('imuPk').textContent = s.imu_packets;
+  $('audPk').textContent = s.audio_packets;
+  $('imuDrop').textContent = s.imu_dropped;  statClass($('imuDrop'), s.imu_dropped);
+  $('audDrop').textContent = s.audio_dropped; statClass($('audDrop'), s.audio_dropped);
+  $('crc').textContent = s.crc_errors; statClass($('crc'), s.crc_errors);
+  $('resync').textContent = s.resyncs;
+  $('ovf').textContent = s.device_audio_overflows; statClass($('ovf'), s.device_audio_overflows);
+}
+setInterval(tick, 100);
+tick();
+</script>
+</body>
+</html>
