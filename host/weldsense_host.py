@@ -30,6 +30,7 @@ import sys
 import threading
 import time
 import wave
+import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -306,9 +307,27 @@ class WeldSenseApp:
 
     @staticmethod
     def auto_port():
-        for p in serial.tools.list_ports.comports():
+        """Find the XIAO across macOS / Linux / Windows.
+
+        Preference order:
+          1) Seeed USB vendor id 0x2886 (most reliable, OS-independent)
+          2) description/manufacturer mentions xiao / seeed / nrf52
+          3) an OS-typical serial device name (cu.usbmodem*, ttyACM*, COMx)
+        """
+        ports = list(serial.tools.list_ports.comports())
+        for p in ports:                      # 1) Seeed vendor id
+            if getattr(p, "vid", None) == 0x2886:
+                return p.device
+        for p in ports:                      # 2) name keywords
+            blob = " ".join(str(x) for x in
+                            (p.description, p.manufacturer,
+                             getattr(p, "product", None)) if x).lower()
+            if any(k in blob for k in ("xiao", "seeed", "nrf52")):
+                return p.device
+        for p in ports:                      # 3) OS-typical names
             dev = p.device
-            if "usbmodem" in dev or "usbserial" in dev or "ACM" in dev:
+            if ("usbmodem" in dev or "usbserial" in dev or "ACM" in dev
+                    or dev.upper().startswith("COM")):
                 return dev
         return None
 
@@ -592,6 +611,8 @@ def main():
     ap.add_argument("--list", action="store_true", help="list serial ports")
     ap.add_argument("--no-connect", action="store_true",
                     help="start server without auto-connecting")
+    ap.add_argument("--open", action="store_true",
+                    help="open the dashboard in the default browser")
     ap.add_argument("--http-port", type=int, default=HTTP_PORT)
     args = ap.parse_args()
 
@@ -621,6 +642,10 @@ def main():
     url = f"http://{HTTP_HOST}:{args.http_port}"
     print(f"[dashboard] {url}")
     print("[info] Press Ctrl+C to quit.")
+    if args.open:
+        # Open after the server is bound; delay avoids a "connection refused"
+        # flash. webbrowser picks the right opener on macOS/Windows/Linux.
+        threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

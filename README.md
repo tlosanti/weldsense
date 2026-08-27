@@ -31,18 +31,34 @@ layer; recording continues even with no browser open.
 ## Get started (for a teammate with their own XIAO)
 
 You need: a XIAO nRF52840 Sense wired to the LSM6DS3, a **data-capable** USB-C
-cable, macOS with Python 3, and Arduino IDE 1.8.19.
+cable, Python 3, and Arduino IDE 1.8.19. Works on **macOS, Windows, and Linux**.
 
 ```bash
 git clone https://github.com/tlosanti/weldsense.git
 cd weldsense
-./run.sh
 ```
 
-`./run.sh` sets up a Python virtual-env, installs dependencies, launches the
+**macOS / Linux:**
+```bash
+./run.sh
+```
+**Windows** (double-click `run.bat`, or in Command Prompt / PowerShell):
+```bat
+run.bat
+```
+
+The launcher sets up a Python virtual-env, installs dependencies, launches the
 host, and opens the dashboard at **http://127.0.0.1:8765**. First run takes a
-minute (installing deps); after that it's instant. Flash the firmware once (see
-[Flash the firmware](#1-flash-the-firmware)) and you're live.
+minute (installing deps); after that it's instant. The XIAO is auto-detected on
+all three OSes (by Seeed's USB vendor id), whether it shows up as
+`/dev/cu.usbmodem*` (macOS), `/dev/ttyACM*` (Linux), or `COM5` (Windows). Flash
+the firmware once (see [Flash the firmware](#1-flash-the-firmware)) and you're
+live.
+
+> **Windows note:** install Python 3 from
+> [python.org](https://www.python.org/downloads/windows/) and tick **"Add
+> python.exe to PATH"** during setup. No serial driver is needed — the XIAO
+> enumerates as a standard USB serial (CDC) device on Windows 10/11.
 
 > **Note:** WeldSense runs **locally** on the machine the torch is plugged into —
 > the dashboard is served on `127.0.0.1`, not a public URL. GitHub distributes
@@ -76,19 +92,30 @@ WeldSense V2/
 3. Open `firmware/weldsense_firmware/weldsense_firmware.ino`, **Upload**.
 
 ### 2. Run the host
-```bash
-cd "WeldSense V2/host"
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt          # pyserial, numpy, scipy
-python3 weldsense_host.py                 # auto-detects /dev/cu.usbmodem*
-```
-Then open **http://127.0.0.1:8765**.
+Easiest: use the launcher — `./run.sh` (macOS/Linux) or `run.bat` (Windows).
 
-Useful flags:
+To run it by hand instead (or to pass flags):
 ```bash
-python3 weldsense_host.py --list                 # list serial ports
-python3 weldsense_host.py --port /dev/cu.usbmodemXXXX
-python3 weldsense_host.py --no-connect           # serve UI, connect from browser
+# macOS / Linux
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r host/requirements.txt         # pyserial, numpy, scipy
+python3 host/weldsense_host.py --open
+```
+```bat
+REM Windows (Command Prompt / PowerShell)
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r host\requirements.txt
+python host\weldsense_host.py --open
+```
+Then open **http://127.0.0.1:8765** (or pass `--open` and it opens itself).
+
+Useful flags (same on every OS):
+```bash
+python3 host/weldsense_host.py --list        # list serial ports
+python3 host/weldsense_host.py --port COM5   # or /dev/cu.usbmodemXXXX (macOS)
+python3 host/weldsense_host.py --no-connect  # serve UI, connect from browser
+python3 host/weldsense_host.py --http-port 9000
 ```
 
 ### 3. Record
@@ -279,21 +306,24 @@ B/sample and the natural format for a future external ADC.
 
 ---
 
-## Troubleshooting — macOS serial
+## Troubleshooting — serial
 
-**Find the port**
+**Find the port** (`--list` works on every OS)
 ```bash
-ls /dev/cu.usbmodem*
 python3 host/weldsense_host.py --list
 ```
-Use the `cu.*` device, not `tty.*` (`tty.*` blocks waiting for carrier detect).
+- **macOS:** use the `cu.usbmodem*` device, not `tty.*` (`tty.*` blocks waiting
+  for carrier detect). `ls /dev/cu.usbmodem*`
+- **Linux:** it's `/dev/ttyACM0`. If "permission denied", add yourself to the
+  group: `sudo usermod -a -G dialout $USER` then log out/in.
+- **Windows:** it's `COMx` (check Device Manager → Ports). No driver needed on
+  Windows 10/11 — the XIAO is a standard USB CDC serial device.
 
-**"Resource busy" / can't open the port**
-- Close the **Arduino Serial Monitor / Plotter** — only one program can hold the
-  port. Close any other `weldsense_host.py` still running:
-  ```bash
-  pkill -f weldsense_host.py
-  ```
+**"Resource busy" / "Access is denied" / can't open the port**
+- Only one program can hold the port. Close the **Arduino Serial Monitor /
+  Plotter**, and close any other running copy of the host:
+  - macOS/Linux: `pkill -f weldsense_host.py`
+  - Windows: close the launcher window (or end `python.exe` in Task Manager).
 
 **Port doesn't appear**
 - Try a different **data-capable** USB-C cable (charge-only cables won't
@@ -301,11 +331,14 @@ Use the `cu.*` device, not `tty.*` (`tty.*` blocks waiting for carrier detect).
 - Confirm the board is running (the on-board LED). If it was mid-upload,
   double-tap **RESET** to enter the bootloader and re-flash.
 
-**Port name changes between plug-ins** — `usbmodemXXXX` can vary. The host
-auto-detects, or pass `--port`.
+**Port name changes between plug-ins** — `usbmodemXXXX` / `COMx` can vary. The
+host auto-detects by Seeed's USB vendor id, or pass `--port`.
 
-**Permissions** — usually none needed on macOS for `cu.usbmodem*`. If a security
-prompt appears for a USB/serial device, allow it.
+**Windows: `python` not recognized** — reinstall Python from python.org with
+**"Add python.exe to PATH"** checked, or use `py` instead of `python`.
+
+**Permissions** — usually none needed on macOS/Windows. If macOS shows a
+security prompt for a USB/serial device, allow it.
 
 **No data / all zeros**
 - Watch the dashboard **Link/Integrity** panel: rising `CRC errors` or `resyncs`

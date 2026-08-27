@@ -36,11 +36,6 @@ if [ ! -f "$STAMP" ] || [ "$REQ" -nt "$STAMP" ]; then
   touch "$STAMP"
 fi
 
-# ---- Open the dashboard shortly after the server starts ----
-( sleep 1.5
-  if command -v open  >/dev/null 2>&1; then open "$URL"
-  elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL"
-  fi ) >/dev/null 2>&1 &
-
 echo "[run] starting WeldSense host -> $URL   (Ctrl+C to stop)"
-exec "$VENV/bin/python" host/weldsense_host.py "$@"
+# --open makes the Python host open the browser once it is actually serving.
+exec "$VENV/bin/python" host/weldsense_host.py --open "$@"
