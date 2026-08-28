@@ -83,8 +83,7 @@
     <button class="primary" id="btnConnect">Connect XIAO</button>
     <button id="btnDisconnect">Disconnect</button>
     <input id="nameInput" placeholder="sample name" value="weld_sample_01" size="16">
-    <button class="primary" id="btnStart">Start Recording</button>
-    <button class="danger" id="btnStop">Stop Recording</button>
+    <button class="primary" id="btnRecord">● Start Recording</button>
     <button id="btnCal">Recalibrate Gyro</button>
     <span class="spacer"></span>
     <span id="status">idle</span>
@@ -152,8 +151,9 @@ async function post(path, body) {
 }
 $('btnConnect').onclick    = () => post('/api/connect', {});
 $('btnDisconnect').onclick = () => post('/api/disconnect', {});
-$('btnStart').onclick      = () => post('/api/start', {name: $('nameInput').value});
-$('btnStop').onclick       = () => post('/api/stop', {});
+let isRecording = false;   // mirrors server state, updated in tick()
+$('btnRecord').onclick     = () => post(isRecording ? '/api/stop' : '/api/start',
+                                        {name: $('nameInput').value});
 $('btnCal').onclick        = () => post('/api/recalibrate', {});
 
 const f = (v,d=2) => (v===null||v===undefined) ? '–' : Number(v).toFixed(d);
@@ -171,6 +171,14 @@ async function tick() {
   const rp = $('recPill');
   if (s.recording){ rp.className='pill rec'; rp.textContent='● REC '+s.session_name; }
   else { rp.className='pill'; rp.textContent='Idle'; }
+
+  // Toggle the single record button between Start and Stop.
+  isRecording = !!s.recording;
+  const rb = $('btnRecord');
+  if (isRecording){ rb.textContent='■ Stop Recording'; rb.className='danger';
+                    $('nameInput').disabled = true; }
+  else { rb.textContent='● Start Recording'; rb.className='primary';
+         $('nameInput').disabled = false; }
 
   $('status').textContent = s.status_msg || '';
 
