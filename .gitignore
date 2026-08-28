@@ -9,3 +9,6 @@ recordings/*
 
 # macOS
 .DS_Store
+
+# analysis outputs (regenerable from raw)
+analysis/out/

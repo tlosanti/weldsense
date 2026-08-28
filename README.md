@@ -306,6 +306,70 @@ B/sample and the natural format for a future external ADC.
 
 ---
 
+## Analyzing a recording
+
+Offline analysis of any saved session — spectrogram, acoustic features, and
+torch orientation on the shared clock:
+
+```bash
+pip install -r analysis/requirements.txt        # once (adds matplotlib)
+python3 analysis/analyze_session.py             # newest session
+python3 analysis/analyze_session.py recordings/weld_sample_01_YYYYMMDD_HHMMSS
+python3 analysis/analyze_session.py <dir> --tmin 5 --tmax 20   # zoom a window
+python3 analysis/analyze_session.py <dir> --no-show            # save PNGs only
+```
+Writes to `analysis/out/`: `<session>_report.png` (spectrogram + features +
+angle), `<session>_psd.png` (average spectrum), and `<session>_features.csv`
+(per-frame features for your own stats/ML).
+
+### Reading weld audio
+
+This is a **16 kHz airborne MEMS mic**, so it captures the *audible* band up to
+**8 kHz** (Nyquist) — not the ultrasonic 100 kHz–1 MHz range that contact
+acoustic-emission sensors use. It's uncalibrated, so **relative change matters,
+absolute level does not**. Within that band there's real, usable information:
+
+| Feature | Physical meaning | What to watch for |
+|---|---|---|
+| **level_db** | loudness | rises with power, spatter, instability |
+| **centroid_hz** | spectral "brightness" | shifts with process mode / material |
+| **flatness** | tonal (→0) vs noisy (→1) | a strong tone can mean a resonating keyhole; broadband hiss = plume/gas |
+| **flux** | spectral change | spikes = transients: **spatter**, keyhole pops, mode switches |
+| **band ratios** | energy per 0–0.5 / 0.5–2 / 2–4 / 4–8 kHz | band shifts track process-state changes |
+
+**Physical processes that make sound in laser welding:**
+- **Melt-pool oscillation** — low frequency (tens–few hundred Hz).
+- **Keyhole dynamics** — in penetration (keyhole) mode a vapor cavity forms and
+  oscillates; its stability is tied to penetration depth and to porosity. Often
+  the most information-rich band (~1–5 kHz here, capped at 8 kHz).
+- **Vapor plume / shielding gas** — broadband hiss (raises flatness).
+- **Spatter ejection** — impulsive broadband transients (flux spikes).
+- **Conduction vs keyhole mode** — shallow conduction welds sound different
+  (quieter, less tonal) from deeper keyhole welds. This mode change is the most
+  realistic thing to detect first.
+- **Beam wobble / pulse modulation** — if your handheld unit wobbles or pulses
+  the beam, expect strong tones at those rates **and their harmonics**. Identify
+  and account for these first — they can dominate the spectrum.
+
+**Honest limit:** "frequency X = penetration depth Y" is **not** a lookup you can
+read off one weld. It's a *correlation you establish by experiment*:
+
+1. Weld coupons at **controlled, varied settings** (power, speed, focus, gas),
+   deliberately spanning good → bad (shallow, full-penetration, burn-through,
+   porous).
+2. **Label ground truth**: cross-section and measure penetration/defects, or at
+   minimum photograph top+back and rate each weld.
+3. Run `analyze_session.py` on each; the `features.csv` gives you per-frame
+   numbers.
+4. **Compare feature distributions across labels** (e.g. does median centroid or
+   a band ratio separate full-penetration from lack-of-fusion?). Start with
+   simple scatter/box plots before any ML.
+5. Once a feature separates classes, *that's* your candidate acoustic indicator —
+   validated on your machine, your material, this mic.
+
+Because WeldSense keeps **all raw audio**, you can re-run every analysis choice
+over the same welds without re-welding — which is exactly what steps 3–4 need.
+
 ## Troubleshooting — serial
 
 **Find the port** (`--list` works on every OS)

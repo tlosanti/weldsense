@@ -1,0 +1,5 @@
+# Offline analysis dependencies (in addition to host/requirements.txt).
+# Install into the same venv:  pip install -r analysis/requirements.txt
+numpy>=1.21
+scipy>=1.7
+matplotlib>=3.5
