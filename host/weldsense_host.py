@@ -452,10 +452,18 @@ class WeldSenseApp:
         with self._rec_lock:
             if self._recorder:
                 return False, "already recording"
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             base = (name or "weld_sample").strip().replace(" ", "_") or "weld_sample"
-            self.session_name = f"{base}_{ts}"
+            # Use the sample name verbatim (no auto-timestamp). Only if a folder
+            # with that exact name already exists do we append _2, _3, ... so an
+            # earlier recording is never silently overwritten.
+            self.session_name = base
             session_dir = os.path.join(RECORDINGS_DIR, self.session_name)
+            if os.path.exists(session_dir):
+                i = 2
+                while os.path.exists(os.path.join(RECORDINGS_DIR, f"{base}_{i}")):
+                    i += 1
+                self.session_name = f"{base}_{i}"
+                session_dir = os.path.join(RECORDINGS_DIR, self.session_name)
             meta = self._build_metadata(self.session_name)
             self._recorder = Recorder(session_dir, self.audio_fs, meta)
         self._set(recording=True, session_name=self.session_name,

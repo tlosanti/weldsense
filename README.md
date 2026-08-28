@@ -370,6 +370,54 @@ read off one weld. It's a *correlation you establish by experiment*:
 Because WeldSense keeps **all raw audio**, you can re-run every analysis choice
 over the same welds without re-welding — which is exactly what steps 3–4 need.
 
+### What the literature says (and the one caveat that matters most)
+
+Acoustic monitoring of laser welding is a real, active research field. The
+consensus points:
+
+- **Airborne sound does carry penetration information.** Molten-pool pulsation,
+  vapor/plasma plume, thermal stress, and **keyhole oscillation** all radiate
+  sound, and the keyhole-oscillation bands are reported as *distinctive when the
+  weld is fully penetrated*. (Reviews: *Acoustic process monitoring in laser
+  beam welding*; *Interpreting acoustic emissions to determine the weld depth
+  during laser beam welding*, J. Laser Appl. 34(4), 2022.)
+- **Melt-pool / keyhole oscillations sit partly in the audible band.**
+  Frequency-based studies of weld-pool dynamics report oscillations from ~100 Hz
+  up into the low kHz (*Frequency-based analysis of weld pool dynamics and
+  keyhole oscillations at laser beam welding of galvanized steel sheets*).
+- **Spectrogram + deep learning is the modern approach** — exactly the
+  time-frequency view this tool produces. (*Laser Welding Penetration Monitoring
+  Based on Time-Frequency Characterization of Acoustic Emission and CNN-LSTM*,
+  Sensors 2023, PMC9967101; *Laser Beam Welding State Classification: A Deep
+  Learning Framework for Acoustic Signal Intelligence*, Machines 2025.)
+- **Ground truth is established by an independent sensor, not by the audio
+  itself.** The gold-standard method (Empa / Shevchik & Wasmer, *Supervised deep
+  learning for real-time quality monitoring of laser welding with X-ray
+  radiographic guidance*, Sci. Rep. 2020) labels each moment with **X-ray
+  radiography**, then learns the acoustic signature. Your accessible equivalent:
+  **cross-section the weld and measure penetration under a microscope**, plus
+  top/back photos. That is what "verifies" an acoustic finding.
+
+> **The caveat that matters most for THIS hardware:** most laser-welding
+> penetration studies use **ultrasonic** acoustic emission — sensors and sampling
+> in the **~40 kHz – 1 MHz** range. The strongest "keyhole resonance ↔ full
+> penetration" bands are often reported around **40–110 kHz**, with unstable
+> melt-pool activity ~8–26 kHz. Your XIAO mic samples at **16 kHz → 8 kHz
+> Nyquist**, so it **cannot see any of those bands.** What it *can* see: the
+> low-frequency melt-pool/process tones (hundreds of Hz to a few kHz), overall
+> loudness and stability, mode changes, and spatter transients — all genuinely
+> useful for *process-state* and *event* detection, but **not** the ultrasonic
+> penetration-depth measurement those papers describe. To do that measurement you
+> would upgrade the front end to a high-sample-rate ultrasonic AE sensor
+> (contact piezo) or a wideband optical microphone — which is exactly the kind of
+> sensor swap the raw-data architecture is built to accept later.
+
+**Bottom line:** in the audible band you can realistically build a *classifier of
+process state* (e.g. conduction vs keyhole, stable vs spatter/burn-through) on
+**your** machine and material, validated against cross-sections. Reading absolute
+penetration depth from this mic alone is not supported by the physics — be
+honest about that boundary in any writeup.
+
 ## Troubleshooting — serial
 
 **Find the port** (`--list` works on every OS)
