@@ -28,6 +28,10 @@ feature extraction, visualization, and logging all happen on the host. The
 browser dashboard is a *view* of host state — it is **not** the acquisition
 layer; recording continues even with no browser open.
 
+> **Where this is going:** the current XIAO is Phase 0. See
+> [ARCHITECTURE.md](ARCHITECTURE.md) for the modular multi-node sensor platform
+> and the in-situ weld-characterization algorithm pipeline it feeds.
+
 ## Get started (for a teammate with their own XIAO)
 
 You need: a XIAO nRF52840 Sense wired to the LSM6DS3, a **data-capable** USB-C
